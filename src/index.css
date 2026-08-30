@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  
+  --color-ink: #131B2E;
+  --color-ink-soft: #3B4560;
+  --color-ink-light: #5A6480;
+  --color-paper: #F2F3EF;
+  --color-paper-dim: #E6E7E0;
+  --color-card: #FCFCFA;
+  --color-brass: #B4813C;
+  --color-brass-dark: #8F6529;
+  --color-teal-accent: #2E6F6E;
+  --color-rose-accent: #B14B4B;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    letter-spacing: -0.015em;
+  }
+}
+
+@keyframes flipDown {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  45% {
+    transform: translateY(8%);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-flip-down {
+  animation: flipDown 0.38s ease-out forwards;
+}
+
+@keyframes pulseSlow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.animate-pulse-slow {
+  animation: pulseSlow 1.8s ease-in-out infinite;
+}
