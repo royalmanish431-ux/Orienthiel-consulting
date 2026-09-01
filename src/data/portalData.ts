@@ -68,7 +68,7 @@ export const LIVE_JOB_ROSTER: JobRole[] = [
     model: "Contract Staffing",
     location: "Remote / Hybrid (New York, NY)",
     compensation: "$85 – $110 / hr",
-    status: "Screening",
+    status: "Closed",
     department: "Cloud & Infrastructure Operations",
     description: "Seeking an experienced Cloud Architect & Infrastructure Engineer to lead hybrid AWS/GCP migration, Kubernetes container orchestration, and CI/CD pipeline automation for a high-availability fintech ecosystem.",
     requirements: [
@@ -143,7 +143,7 @@ export const LIVE_JOB_ROSTER: JobRole[] = [
     model: "Permanent Placement",
     location: "Chicago, IL / Hybrid",
     compensation: "$115,000 – $135,000 / yr",
-    status: "Submitted",
+    status: "Hold",
     department: "Enterprise Applications",
     description: "Translate complex business and financial workflows into scalable ERP configurations (SAP / NetSuite / Salesforce) with robust stakeholder alignment and data auditing.",
     requirements: [

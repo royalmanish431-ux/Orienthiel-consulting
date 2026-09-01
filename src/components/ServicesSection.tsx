@@ -34,8 +34,8 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
           </p>
         </div>
 
-        {/* 3 Industry Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        {/* 3 Industry Cards - Vertical Stack */}
+        <div className="grid grid-cols-1 gap-6 mb-12">
           {SERVICES_DATA.map((service) => {
             const isSelected = activeIndustryId === service.id;
 
@@ -44,26 +44,23 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
                 key={service.id}
                 id={`service-card-${service.id}`}
                 onClick={() => setActiveIndustryId(service.id)}
-                className="bg-[#FCFCFA] border border-[#131B2E]/12 rounded-md p-6 sm:p-7 transition-all duration-200 cursor-pointer flex flex-col justify-between hover:border-[#131B2E]/40 hover:shadow-md"
+                className="bg-[#FCFCFA] border border-[#131B2E]/12 rounded-md p-6 sm:p-7 transition-all duration-200 cursor-pointer flex flex-col hover:border-[#131B2E]/40 hover:shadow-md"
               >
-                <div>
-                  <div className="flex items-center justify-between mb-5">
-                    <div 
-                      className="w-10 h-10 rounded flex items-center justify-center font-mono font-bold text-xs"
-                      style={{ backgroundColor: service.bgColor, color: service.textColor }}
-                    >
-                      {service.badge}
-                    </div>
+                <div className="flex items-center gap-4 mb-4">
+                  <div 
+                    className="w-10 h-10 rounded flex items-center justify-center font-mono font-bold text-xs shrink-0"
+                    style={{ backgroundColor: service.bgColor, color: service.textColor }}
+                  >
+                    {service.badge}
                   </div>
-
-                  <h3 className="font-display font-bold text-xl text-[#131B2E] mb-2">
+                  <h3 className="font-display font-bold text-xl text-[#131B2E]">
                     <span>{service.title}</span>
                   </h3>
-
-                  <p className="text-sm text-[#3B4560] leading-relaxed mb-5">
-                    {service.shortDesc}
-                  </p>
                 </div>
+
+                <p className="text-sm text-[#3B4560] leading-relaxed mb-6">
+                  {service.shortDesc}
+                </p>
               </div>
             );
           })}

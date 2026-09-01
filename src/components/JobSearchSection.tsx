@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { LIVE_JOB_ROSTER } from '../data/portalData';
 import { JobRole, IndustryVertical } from '../types';
-import { Search, MapPin, DollarSign, Clock, ArrowUpRight, Check, Filter, Loader2 } from 'lucide-react';
+import { Search, MapPin, DollarSign, Clock, ArrowUpRight, Check, Filter, Loader2, CheckCircle2, ChevronDown, ChevronUp, Share2 } from 'lucide-react';
 
 interface JobSearchSectionProps {
   onSelectRole: (role: JobRole) => void;
@@ -21,25 +22,39 @@ export const JobSearchSection: React.FC<JobSearchSectionProps> = ({
   const [activeSearch, setActiveSearch] = useState({ query: '', location: '' });
   const [selectedVertical, setSelectedVertical] = useState<'ALL' | IndustryVertical>('ALL');
   const [selectedModel, setSelectedModel] = useState<string>('ALL');
+  const [expandedJobs, setExpandedJobs] = useState<Set<string>>(new Set());
+
+  const toggleJobExpansion = (jobId: string) => {
+    const newExpanded = new Set(expandedJobs);
+    if (newExpanded.has(jobId)) {
+      newExpanded.delete(jobId);
+    } else {
+      newExpanded.add(jobId);
+    }
+    setExpandedJobs(newExpanded);
+  };
 
   useEffect(() => {
     const fetchJobs = async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
       try {
-        const response = await fetch(CSV_URL);
+        const response = await fetch(CSV_URL, { signal: controller.signal });
+        if (!response.ok) throw new Error('Failed to fetch');
         const csvData = await response.text();
         const parsedJobs = parseGoogleSheetCSV(csvData);
         
-        console.log('Parsed Sheet Data:', parsedJobs);
-
         if (parsedJobs.length > 0) {
           setJobs(parsedJobs as JobRole[]);
         } else {
           setJobs(LIVE_JOB_ROSTER);
         }
       } catch (err) {
-        console.error('Failed to fetch jobs, using fallback:', err);
+        console.error('Failed to fetch jobs or timeout, using fallback:', err);
         setJobs(LIVE_JOB_ROSTER);
       } finally {
+        clearTimeout(timeoutId);
         setLoading(false);
       }
     };
@@ -90,12 +105,13 @@ export const JobSearchSection: React.FC<JobSearchSectionProps> = ({
 
     return dataRows
       .map((row, index) => {
+        // Safe access
         const getVal = (possibleKeys: string[]) => {
           const colIndex = headers.findIndex(h => possibleKeys.some(k => h.includes(k)));
           return colIndex !== -1 && row[colIndex] ? row[colIndex].replace(/^"|"$/g, '').trim() : '';
         };
 
-        const title = getVal(['title', 'role', 'position']) || row[0] || '';
+        const title = getVal(['title', 'role', 'position']) || (row[0] ? row[0] : '');
         if (!title || title.length < 2) return null;
 
         const vertical = getVal(['category', 'industry', 'dept']) || 'General';
@@ -108,9 +124,19 @@ export const JobSearchSection: React.FC<JobSearchSectionProps> = ({
         const location = locationParts.length > 0 ? locationParts.join(', ').replace(/, \d+$/, (match) => match.replace(',', '')) : 'Remote / On-site';
 
         const workModel = getVal(['model', 'work model', 'type']) || 'Permanent';
+        const rawStatus = getVal(['status']);
+        const normalizedStatus = rawStatus.toLowerCase().trim();
+        let status: RoleStatus = 'Open';
+        if (normalizedStatus === 'closed') {
+          status = 'Closed';
+        } else if (normalizedStatus === 'hold' || normalizedStatus === 'on hold') {
+          status = 'Hold';
+        } else {
+          status = 'Open';
+        }
+        
         const bonus = getVal(['bonus', 'sign-on', 'signon']);
         
-        // Exact header mapping
         const shift = getVal(['shift']);
         const schedule = getVal(['schedule']);
         const workArrangement = getVal(['workarrangement']);
@@ -118,8 +144,6 @@ export const JobSearchSection: React.FC<JobSearchSectionProps> = ({
         const maxPay = getVal(['maximumbasicpay']);
         
         const compensation = (minPay && maxPay) ? `${minPay} - ${maxPay} / yr` : (minPay || maxPay || 'Competitive');
-
-        // Description setup (bonus moved to modal)
         const description = getVal(['desc', 'summary', 'responsibilities']) || '';
 
         return {
@@ -137,7 +161,7 @@ export const JobSearchSection: React.FC<JobSearchSectionProps> = ({
           workArrangement: workArrangement,
           department: vertical,
           description: description,
-          status: 'Open' as any,
+          status: status,
           postedDaysAgo: 0,
           requirements: [],
           responsibilities: []
@@ -307,11 +331,17 @@ export const JobSearchSection: React.FC<JobSearchSectionProps> = ({
                         </span>
                       </div>
                     )}
+                    
+                    {/* Status Badge */}
+                    <div className="mb-3">
+                      {job.status === 'Closed' && <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-[10px] font-bold">🔴 CLOSED</span>}
+                      {job.status === 'Hold' && <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-[10px] font-bold">🟡 HOLD</span>}
+                      {job.status === 'Open' && <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-[10px] font-bold">🟢 OPEN</span>}
+                    </div>
 
                     {/* Title */}
                     <h3 
-                      onClick={() => onSelectRole(job)}
-                      className="font-display font-bold text-lg text-[#131B2E] group-hover:text-[#8F6529] transition-colors cursor-pointer mb-2"
+                      className="font-display font-bold text-lg text-[#131B2E] transition-colors mb-2"
                     >
                       {job.title}
                     </h3>
@@ -344,24 +374,83 @@ export const JobSearchSection: React.FC<JobSearchSectionProps> = ({
                     <p className="text-xs text-[#3B4560] line-clamp-2 leading-relaxed mb-4">
                       {job.description}
                     </p>
+
+                    {/* Accordion Content */}
+                    <AnimatePresence>
+                      {expandedJobs.has(job.id) && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="space-y-4 py-4 border-t border-[#131B2E]/10 text-xs text-[#3B4560]">
+                            <div>
+                              <h4 className="font-mono text-[10px] uppercase tracking-wider text-[#8F6529] font-bold mb-1.5">Position Overview</h4>
+                              <p className="leading-relaxed">{job.description}</p>
+                              {job.bonus && (
+                                <p className="mt-2 font-semibold text-emerald-600">• Sign-on Bonus: {job.bonus}</p>
+                              )}
+                            </div>
+                            {job.responsibilities.length > 0 && (
+                              <div>
+                                <h4 className="font-mono text-[10px] uppercase tracking-wider text-[#8F6529] font-bold mb-1.5">Responsibilities</h4>
+                                <ul className="space-y-1">
+                                  {job.responsibilities.map((resp, i) => (
+                                    <li key={i} className="flex items-start gap-1.5">
+                                      <CheckCircle2 className="w-3 h-3 text-[#2E6F6E] shrink-0 mt-0.5" />
+                                      {resp}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            {job.requirements.length > 0 && (
+                              <div>
+                                <h4 className="font-mono text-[10px] uppercase tracking-wider text-[#8F6529] font-bold mb-1.5">Qualifications</h4>
+                                <ul className="space-y-1">
+                                  {job.requirements.map((req, i) => (
+                                    <li key={i} className="flex items-start gap-1.5">
+                                      <CheckCircle2 className="w-3 h-3 text-[#8F6529] shrink-0 mt-0.5" />
+                                      {req}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
 
                   {/* Card Actions */}
                   <div className="pt-3 border-t border-[#131B2E]/08 flex items-center justify-between gap-3">
                     <button
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSelectRole(job); }}
+                      onClick={() => toggleJobExpansion(job.id)}
                       className="text-xs font-semibold text-[#131B2E] hover:text-[#8F6529] flex items-center gap-1 cursor-pointer"
                     >
-                      <span>Role Specs</span>
-                      <ArrowUpRight className="w-3.5 h-3.5" />
+                      <span>{expandedJobs.has(job.id) ? 'Hide Specs' : 'Role Specs'}</span>
+                      {expandedJobs.has(job.id) ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    </button>
+                    
+                    <button
+                      onClick={() => onSelectRole(job)} // Open ShareModal
+                      className="text-xs font-semibold text-[#131B2E] hover:text-[#8F6529] flex items-center gap-1 cursor-pointer"
+                    >
+                      <Share2 className="w-3.5 h-3.5" />
+                      <span>Share</span>
                     </button>
 
                     <button
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); onApplyForRole(job); }}
-                      className="bg-[#131B2E] hover:bg-[#8F6529] text-white text-xs font-semibold px-3.5 py-1.5 rounded transition-colors cursor-pointer flex items-center gap-1.5"
+                      disabled={job.status !== 'Open'}
+                      className={`${job.status !== 'Open' ? 'bg-gray-400 cursor-not-allowed opacity-50' : 'bg-[#131B2E] hover:bg-[#8F6529]'} text-white text-xs font-semibold px-3.5 py-1.5 rounded transition-colors flex items-center gap-1.5`}
                     >
-                      <Check className="w-3 h-3 text-[#B4813C]" />
-                      <span>Apply Now</span>
+                      {job.status === 'Open' && <Check className="w-3 h-3 text-[#B4813C]" />}
+                      <span>
+                        {job.status === 'Open' ? 'Apply Now' : job.status === 'Closed' ? 'Position Closed' : 'On Hold'}
+                      </span>
                     </button>
                   </div>
                 </div>

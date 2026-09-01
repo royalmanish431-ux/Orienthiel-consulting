@@ -30,13 +30,37 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+    
+    const payload = {
+      formType: "contact",
+      fullName: formData.name,
+      email: formData.email,
+      phone: formData.phone,
+      reason: formData.reason,
+      message: formData.message
+    };
+
+      try {
+        await fetch("https://script.google.com/macros/s/AKfycbwnV7-HfbvEVUKM7H_lgh4UHIYC0-ZMip9ImiizKZzhRP32XjVZX-4X6VYIWMa4sRMs/exec", {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: {
+            'Content-Type': 'text/plain;charset=utf-8'
+          },
+          body: JSON.stringify(payload)
+        });
+      alert("Message sent successfully!");
+      onClose();
       setSubmitted(true);
-    }, 900);
+    } catch (error) {
+      console.error('Error submitting contact form:', error);
+      alert('Failed to send message. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

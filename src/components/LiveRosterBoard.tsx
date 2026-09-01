@@ -92,7 +92,7 @@ export const LiveRosterBoard: React.FC<LiveRosterBoardProps> = ({ onSelectRole }
             <div
               key={item.code}
               id={`board-row-${item.code}`}
-              className="grid grid-cols-[38px_70px_1fr_80px] sm:grid-cols-[44px_88px_1fr_95px] items-center gap-2 sm:gap-3 py-2.5 px-2 sm:px-3 rounded border border-transparent transition-all duration-150 cursor-default group/row"
+              className="grid grid-cols-[38px_70px_1fr_80px] sm:grid-cols-[44px_88px_1fr_95px] items-start gap-2 sm:gap-3 py-2.5 px-2 sm:px-3 rounded border border-transparent transition-all duration-150 cursor-default group/row"
             >
               {/* Code */}
               <span className="font-mono text-xs text-white/45 transition-colors">
@@ -107,9 +107,9 @@ export const LiveRosterBoard: React.FC<LiveRosterBoardProps> = ({ onSelectRole }
               </div>
 
               {/* Split Flap Animated Title */}
-              <div className="overflow-hidden h-6 flex items-center pr-1">
+              <div className="flex items-center pr-1">
                 <span 
-                  className={`font-mono text-xs sm:text-[13.5px] text-[#F2F3EF] truncate block transition-all ${
+                  className={`font-mono text-xs sm:text-[13.5px] text-[#F2F3EF] break-words transition-all ${
                     isFlipping ? 'animate-flip-down text-[#B4813C]' : ''
                   }`}
                 >

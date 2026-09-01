@@ -89,7 +89,11 @@ export const JobDetailModal: React.FC<JobDetailModalProps> = ({ role, onClose, o
               <Clock className="w-4 h-4 text-[#8F6529] shrink-0" />
               <div>
                 <span className="text-[#3B4560] block font-mono text-[10px] uppercase">Status</span>
-                <span className="font-semibold text-[#131B2E]">{role.status} (Active)</span>
+                <span className="font-semibold text-[#131B2E]">
+                  {role.status === 'Closed' && <span className="bg-red-100 text-red-700 px-1.5 py-0.5 rounded text-[10px] font-bold">🔴 CLOSED</span>}
+                  {role.status === 'Hold' && <span className="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-[10px] font-bold">🟡 HOLD</span>}
+                  {role.status === 'Open' && <span className="bg-green-100 text-green-700 px-1.5 py-0.5 rounded text-[10px] font-bold">🟢 OPEN</span>}
+                </span>
               </div>
             </div>
           </div>
@@ -158,10 +162,11 @@ export const JobDetailModal: React.FC<JobDetailModalProps> = ({ role, onClose, o
 
           <button
             onClick={() => onApply(role)}
-            className="bg-[#131B2E] hover:bg-[#8F6529] text-white text-xs sm:text-sm font-semibold px-5 py-2.5 rounded transition-all flex items-center gap-2 cursor-pointer shadow-sm"
+            disabled={role.status !== 'Open'}
+            className={`${role.status !== 'Open' ? 'bg-gray-400 cursor-not-allowed opacity-50' : 'bg-[#131B2E] hover:bg-[#8F6529]'} text-white text-xs sm:text-sm font-semibold px-5 py-2.5 rounded transition-all flex items-center gap-2 cursor-pointer shadow-sm`}
           >
-            <span>Apply For This Position</span>
-            <ArrowRight className="w-4 h-4 text-[#B4813C]" />
+            <span>{role.status === 'Open' ? 'Apply For This Position' : role.status === 'Closed' ? 'Position Closed' : 'On Hold'}</span>
+            {role.status === 'Open' && <ArrowRight className="w-4 h-4 text-[#B4813C]" />}
           </button>
         </div>
 

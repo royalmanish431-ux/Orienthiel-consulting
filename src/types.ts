@@ -7,7 +7,7 @@ export type StaffingModel =
   | 'Locum Tenens' 
   | 'Temporary Staffing';
 
-export type RoleStatus = 'Screening' | 'Submitted' | 'Open' | 'Interviewing' | 'Urgent' | 'Active';
+export type RoleStatus = 'Screening' | 'Submitted' | 'Open' | 'Interviewing' | 'Urgent' | 'Active' | 'Closed' | 'Hold';
 
 export interface JobRole {
   id: string;
@@ -18,6 +18,7 @@ export interface JobRole {
   model: StaffingModel;
   location: string;
   compensation: string;
+  salary?: string;
   bonus?: string;
   status: RoleStatus;
   department: string;

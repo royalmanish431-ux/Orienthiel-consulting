@@ -14,8 +14,7 @@ import { ContactModal } from './components/ContactModal';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { TermsAndConditions } from './components/TermsAndConditions';
 import { Footer } from './components/Footer';
-
-
+import { ShareModal } from './components/ShareModal';
 import { CandidateModal } from './components/CandidateModal';
 import { JobDetailModal } from './components/JobDetailModal';
 import { JobRole } from './types';
@@ -24,13 +23,14 @@ export default function App() {
   const [currentView, setCurrentView] = useState<'home' | 'jobs' | 'contact'>('home');
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
-  const views: ('home' | 'jobs')[] = ['home', 'jobs'];
 
   const [isCandidateModalOpen, setIsCandidateModalOpen] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
   const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [selectedRoleForDetail, setSelectedRoleForDetail] = useState<JobRole | null>(null);
+  const [preselectedJobForShare, setPreselectedJobForShare] = useState<JobRole | null>(null);
   const [preselectedJobForApply, setPreselectedJobForApply] = useState<JobRole | null>(null);
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -47,15 +47,14 @@ export default function App() {
     
     // Only trigger swipe if horizontal movement is significant and greater than vertical movement
     if (Math.abs(diffX) > 100 && Math.abs(diffX) > Math.abs(diffY)) {
-      const currentIndex = views.indexOf(currentView as 'home' | 'jobs');
-      if (currentIndex === -1) return;
-
-      if (diffX > 0 && currentIndex > 0) {
-        // Swipe Right (Previous)
-        setCurrentView(views[currentIndex - 1]);
-      } else if (diffX < 0 && currentIndex < views.length - 1) {
-        // Swipe Left (Next)
-        setCurrentView(views[currentIndex + 1]);
+      // Allow only Right swipe (Back navigation/close)
+      if (diffX > 0) {
+        if (isCandidateModalOpen) {
+          setIsCandidateModalOpen(false);
+          setPreselectedJobForApply(null);
+        } else if (currentView === 'jobs') {
+          setCurrentView('home');
+        }
       }
     }
   };
@@ -74,6 +73,11 @@ export default function App() {
   const handleOpenCandidateModal = (job?: JobRole | null) => {
     setPreselectedJobForApply(job || null);
     setIsCandidateModalOpen(true);
+  };
+
+  const handleOpenShareModal = (job: JobRole) => {
+    setPreselectedJobForShare(job);
+    setIsShareModalOpen(true);
   };
 
   const handleOpenContactModal = () => {
@@ -150,7 +154,7 @@ export default function App() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               {/* Active Openings & Job Search Section */}
               <JobSearchSection
-                onSelectRole={handleSelectRoleForDetail}
+                onSelectRole={handleOpenShareModal}
                 onApplyForRole={handleOpenCandidateModal}
               />
             </div>
@@ -176,6 +180,14 @@ export default function App() {
         isOpen={isContactModalOpen}
         onClose={() => setIsContactModalOpen(false)}
       />
+
+      {isShareModalOpen && preselectedJobForShare && (
+        <ShareModal
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          job={preselectedJobForShare}
+        />
+      )}
 
       <PrivacyPolicy isOpen={isPrivacyModalOpen} onClose={() => setIsPrivacyModalOpen(false)} />
       <TermsAndConditions isOpen={isTermsModalOpen} onClose={() => setIsTermsModalOpen(false)} />

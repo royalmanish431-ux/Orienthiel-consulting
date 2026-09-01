@@ -60,12 +60,13 @@ export const CandidateModal: React.FC<CandidateModalProps> = ({
   const [linkedIn, setLinkedIn] = useState('');
   const [preference, setPreference] = useState('');
   
-  const [uploadedFile, setUploadedFile] = useState<{ name: string; size: string } | null>(null);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [isConsentModalOpen, setIsConsentModalOpen] = useState(false);
 
   // Initialize preference text based on preselectedJob
   useEffect(() => {
@@ -126,21 +127,13 @@ export const CandidateModal: React.FC<CandidateModalProps> = ({
     e.stopPropagation();
     setDragActive(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      setUploadedFile({
-        name: file.name,
-        size: `${(file.size / 1024).toFixed(1)} KB`
-      });
+      setUploadedFile(e.dataTransfer.files[0]);
     }
   };
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setUploadedFile({
-        name: file.name,
-        size: `${(file.size / 1024).toFixed(1)} KB`
-      });
+      setUploadedFile(e.target.files[0]);
     }
   };
 
@@ -149,13 +142,66 @@ export const CandidateModal: React.FC<CandidateModalProps> = ({
     handleFinalSubmit();
   };
 
-  const handleFinalSubmit = () => {
-    setIsConsentModalOpen(false);
+  const readFileAsBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        resolve(result);
+      };
+      reader.onerror = (error) => reject(error);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleFinalSubmit = async () => {
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+
+    let base64String = "";
+    if (uploadedFile) {
+      base64String = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(uploadedFile);
+      });
+    }
+
+    const payload = {
+      formType: "candidate",
+      jobTitle: preselectedJob?.title || "",
+      firstName: firstName || "",
+      lastName: lastName || "",
+      email: email || "",
+      phone: phone || "",
+      streetAddress: streetAddress || "",
+      city: city || "",
+      state: state || "",
+      zipCode: zipCode || "",
+      ssn: ssn || "",
+      linkedin: linkedIn || "",
+      preference: preference || "",
+      fileBase64: base64String,
+      fileName: uploadedFile?.name || "resume.pdf",
+      fileMimeType: uploadedFile?.type || "application/pdf"
+    };
+
+    try {
+      await fetch("https://script.google.com/macros/s/AKfycbwnV7-HfbvEVUKM7H_lgh4UHIYC0-ZMip9ImiizKZzhRP32XjVZX-4X6VYIWMa4sRMs/exec", {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload)
+      });
+      alert("Application submitted successfully!");
+      onClose();
       setSubmitted(true);
-    }, 850);
+    } catch (error) {
+      console.error("Submission failed", error);
+      alert("Failed to submit application. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleReset = () => {
@@ -253,7 +299,7 @@ export const CandidateModal: React.FC<CandidateModalProps> = ({
                 <div>&bull; <strong>Status:</strong> Assigned to Dedicated Talent Partner</div>
                 <div>&bull; <strong>Next Step:</strong> Direct phone/video briefing within 24 hours</div>
                 {uploadedFile && (
-                  <div>&bull; <strong>Attached:</strong> {uploadedFile.name} ({uploadedFile.size})</div>
+                  <div>&bull; <strong>Attached:</strong> {uploadedFile.name} ({(uploadedFile.size / 1024).toFixed(1)} KB)</div>
                 )}
               </div>
 
@@ -507,7 +553,7 @@ export const CandidateModal: React.FC<CandidateModalProps> = ({
                       <FileText className="w-7 h-7 text-teal-600 shrink-0" />
                       <div className="text-left">
                         <p className="text-sm font-semibold text-gray-900">{uploadedFile.name}</p>
-                        <p className="text-xs text-gray-500">{uploadedFile.size} &bull; Attached</p>
+                        <p className="text-xs text-gray-500">{(uploadedFile.size / 1024).toFixed(1)} KB &bull; Attached</p>
                       </div>
                       <button
                         type="button"
