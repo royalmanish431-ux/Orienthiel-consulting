@@ -11,7 +11,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
     name: '',
     email: '',
     phone: '',
-    reason: 'Facility Staffing Need (Urgent / Contract Placement)',
+    reason: '',
     message: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -22,7 +22,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
       const timer = setTimeout(() => {
         onClose();
         setSubmitted(false);
-        setFormData({ name: '', email: '', phone: '', reason: 'Facility Staffing Need (Urgent / Contract Placement)', message: '' });
+        setFormData({ name: '', email: '', phone: '', reason: '', message: '' });
       }, 3000);
       return () => clearTimeout(timer);
     }
@@ -114,11 +114,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
 
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">REASON FOR CONTACT *</label>
-                <select value={formData.reason} onChange={(e) => setFormData({...formData, reason: e.target.value})} className="w-full px-3.5 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 cursor-pointer">
-                  <option>Facility Staffing Need (Urgent / Contract Placement)</option>
-                  <option>Career Opportunity</option>
-                  <option>General Inquiry</option>
-                </select>
+                <input required type="text" value={formData.reason} onChange={(e) => setFormData({...formData, reason: e.target.value})} className="w-full px-3.5 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm" placeholder="Enter reason for contact (e.g., Staffing inquiry, Partnership, etc.)" />
               </div>
 
               <div>
