@@ -22,6 +22,7 @@ export interface JobRole {
   bonus?: string;
   status: RoleStatus;
   department: string;
+  filter?: string;
   description: string;
   requirements: string[];
   responsibilities: string[];
@@ -51,7 +52,7 @@ export interface WhyPillar {
   number: string;
   title: string;
   description: string;
-  highlight: string;
+  highlight?: string;
 }
 
 export interface ServiceDetail {

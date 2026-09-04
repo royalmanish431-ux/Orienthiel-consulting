@@ -22,6 +22,12 @@ import {
 } from 'lucide-react';
 import { JobRole } from '../types';
 import { ConsentModal } from './ConsentModal';
+import { 
+  formatPhoneNumberRaw, validatePhoneNumber,
+  formatZipCode, validateZipCode,
+  formatSSN, validateSSN,
+  formatName, validateName
+} from '../utils/formValidation';
 
 interface CandidateModalProps {
   isOpen: boolean;
@@ -60,7 +66,42 @@ export const CandidateModal: React.FC<CandidateModalProps> = ({
   const [linkedIn, setLinkedIn] = useState('');
   const [preference, setPreference] = useState('');
   
+  const [errors, setErrors] = useState<{ phone?: string, zipCode?: string, ssn?: string, firstName?: string, lastName?: string }>({});
+
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+
+  const handleFirstNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatName(e.target.value);
+    setFirstName(formatted);
+    if (errors.firstName) setErrors({ ...errors, firstName: undefined });
+  };
+  const handleLastNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatName(e.target.value);
+    setLastName(formatted);
+    if (errors.lastName) setErrors({ ...errors, lastName: undefined });
+  };
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatPhoneNumberRaw(e.target.value);
+    setPhone(formatted);
+    if (errors.phone) setErrors({ ...errors, phone: undefined });
+  };
+  const validatePhoneBlur = () => {
+    if (!validatePhoneNumber(phone)) {
+      setErrors({ ...errors, phone: "Please enter a valid, active 10-digit phone number." });
+    } else {
+      setErrors({ ...errors, phone: undefined });
+    }
+  };
+  const handleZipCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatZipCode(e.target.value);
+    setZipCode(formatted);
+    if (errors.zipCode) setErrors({ ...errors, zipCode: undefined });
+  };
+  const handleSsnChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatSSN(e.target.value);
+    setSsn(formatted);
+    if (errors.ssn) setErrors({ ...errors, ssn: undefined });
+  };
   const [dragActive, setDragActive] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -155,6 +196,18 @@ export const CandidateModal: React.FC<CandidateModalProps> = ({
   };
 
   const handleFinalSubmit = async () => {
+    const newErrors: { phone?: string, zipCode?: string, ssn?: string, firstName?: string, lastName?: string } = {};
+    if (!validateName(firstName)) newErrors.firstName = "Please enter a valid name (letters only)";
+    if (!validateName(lastName)) newErrors.lastName = "Please enter a valid name (letters only)";
+    if (!validatePhoneNumber(phone)) newErrors.phone = "Please enter a valid, active 10-digit phone number.";
+    if (!validateZipCode(zipCode)) newErrors.zipCode = "Please enter a valid 5-digit Zip Code";
+    if (!validateSSN(ssn)) newErrors.ssn = "Please enter a valid 9-digit SSN (XXX-XX-XXXX)";
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+    
     setIsSubmitting(true);
 
     let base64String = "";
@@ -326,10 +379,11 @@ export const CandidateModal: React.FC<CandidateModalProps> = ({
                       type="text"
                       required
                       value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
+                      onChange={handleFirstNameChange}
                       placeholder="e.g. Sarah"
-                      className="w-full pl-10 pr-3.5 py-2.5 bg-gray-50/70 focus:bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                      className={`w-full pl-10 pr-3.5 py-2.5 bg-gray-50/70 focus:bg-white border rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all ${errors.firstName ? 'border-red-500' : 'border-gray-200'}`}
                     />
+                    {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName}</p>}
                   </div>
                 </div>
 
@@ -345,10 +399,11 @@ export const CandidateModal: React.FC<CandidateModalProps> = ({
                       type="text"
                       required
                       value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
+                      onChange={handleLastNameChange}
                       placeholder="e.g. Jenkins"
-                      className="w-full pl-10 pr-3.5 py-2.5 bg-gray-50/70 focus:bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                      className={`w-full pl-10 pr-3.5 py-2.5 bg-gray-50/70 focus:bg-white border rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all ${errors.lastName ? 'border-red-500' : 'border-gray-200'}`}
                     />
+                    {errors.lastName && <p className="text-red-500 text-xs mt-1">{errors.lastName}</p>}
                   </div>
                 </div>
               </div>
@@ -383,13 +438,16 @@ export const CandidateModal: React.FC<CandidateModalProps> = ({
                       <Phone className="w-4 h-4" />
                     </div>
                     <input
-                      type="tel"
+                      type="text"
+                      maxLength={10}
                       required
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+1 (555) 019-2834"
-                      className="w-full pl-10 pr-3.5 py-2.5 bg-gray-50/70 focus:bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                      onChange={handlePhoneChange}
+                      onBlur={validatePhoneBlur}
+                      placeholder="Enter 10-digit phone number"
+                      className={`w-full pl-10 pr-3.5 py-2.5 bg-gray-50/70 focus:bg-white border rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all ${errors.phone ? 'border-red-500' : 'border-gray-200'}`}
                     />
+                    {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
                   </div>
                 </div>
               </div>
@@ -462,10 +520,11 @@ export const CandidateModal: React.FC<CandidateModalProps> = ({
                     type="text"
                     required
                     value={zipCode}
-                    onChange={(e) => setZipCode(e.target.value)}
+                    onChange={handleZipCodeChange}
                     placeholder="e.g. 77002"
-                    className="w-full px-3.5 py-2.5 bg-gray-50/70 focus:bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                    className={`w-full px-3.5 py-2.5 bg-gray-50/70 focus:bg-white border rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all ${errors.zipCode ? 'border-red-500' : 'border-gray-200'}`}
                   />
+                  {errors.zipCode && <p className="text-red-500 text-xs mt-1">{errors.zipCode}</p>}
                 </div>
               </div>
 
@@ -489,11 +548,12 @@ export const CandidateModal: React.FC<CandidateModalProps> = ({
                       type={showSsn ? 'text' : 'password'}
                       required
                       value={ssn}
-                      onChange={(e) => setSsn(e.target.value)}
+                      onChange={handleSsnChange}
                       placeholder="XXX-XX-XXXX"
                       maxLength={11}
-                      className="w-full pl-10 pr-10 py-2.5 bg-gray-50/70 focus:bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 font-mono focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                      className={`w-full pl-10 pr-10 py-2.5 bg-gray-50/70 focus:bg-white border rounded-lg text-sm text-gray-900 placeholder-gray-400 font-mono focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all ${errors.ssn ? 'border-red-500' : 'border-gray-200'}`}
                     />
+                    {errors.ssn && <p className="text-red-500 text-xs mt-1">{errors.ssn}</p>}
                     <button
                       type="button"
                       onClick={() => setShowSsn(!showSsn)}
@@ -638,7 +698,7 @@ export const CandidateModal: React.FC<CandidateModalProps> = ({
 
                 <button
                   type="submit"
-                  disabled={isSubmitting || !termsAccepted || !privacyAccepted}
+                  disabled={isSubmitting || !termsAccepted || !privacyAccepted || !validatePhoneNumber(phone)}
                   className="w-full sm:w-auto bg-[#111827] hover:bg-[#8F6529] text-white text-sm font-semibold px-8 py-3 rounded-lg transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   {isSubmitting ? (

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { FAQ_DATA } from '../data/portalData';
-import { Plus, Minus, Search, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { ChevronDown, Search, ShieldAlert, CheckCircle2 } from 'lucide-react';
 
 export const FaqSection: React.FC = () => {
   const [openIds, setOpenIds] = useState<number[]>([]);
@@ -100,8 +100,8 @@ export const FaqSection: React.FC = () => {
                     </span>
                   </div>
 
-                  <span className="shrink-0 p-1 rounded bg-[#131B2E]/05 text-[#131B2E] mt-0.5">
-                    {isOpen ? <Minus className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                  <span className="shrink-0 p-1 rounded bg-[#131B2E]/05 text-[#131B2E] mt-0.5 transition-transform duration-200">
+                    <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
                   </span>
                 </button>
 

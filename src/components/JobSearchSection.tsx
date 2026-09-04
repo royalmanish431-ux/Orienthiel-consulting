@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { LIVE_JOB_ROSTER } from '../data/portalData';
-import { JobRole, IndustryVertical } from '../types';
+import { JobRole, IndustryVertical, RoleStatus } from '../types';
 import { Search, MapPin, DollarSign, Clock, ArrowUpRight, Check, Filter, Loader2, CheckCircle2, ChevronDown, ChevronUp, Share2 } from 'lucide-react';
 
 interface JobSearchSectionProps {
@@ -20,9 +20,14 @@ export const JobSearchSection: React.FC<JobSearchSectionProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [locationQuery, setLocationQuery] = useState('');
   const [activeSearch, setActiveSearch] = useState({ query: '', location: '' });
-  const [selectedVertical, setSelectedVertical] = useState<'ALL' | IndustryVertical>('ALL');
+  const [selectedFilter, setSelectedFilter] = useState<string>('All');
   const [selectedModel, setSelectedModel] = useState<string>('ALL');
   const [expandedJobs, setExpandedJobs] = useState<Set<string>>(new Set());
+
+  const uniqueFilters = useMemo(() => {
+    const filters = Array.from(new Set(jobs.map(j => j.filter).filter(Boolean)));
+    return ['All', ...filters] as string[];
+  }, [jobs]);
 
   const toggleJobExpansion = (jobId: string) => {
     const newExpanded = new Set(expandedJobs);
@@ -37,7 +42,7 @@ export const JobSearchSection: React.FC<JobSearchSectionProps> = ({
   useEffect(() => {
     const fetchJobs = async () => {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
 
       try {
         const response = await fetch(CSV_URL, { signal: controller.signal });
@@ -50,8 +55,12 @@ export const JobSearchSection: React.FC<JobSearchSectionProps> = ({
         } else {
           setJobs(LIVE_JOB_ROSTER);
         }
-      } catch (err) {
-        console.error('Failed to fetch jobs or timeout, using fallback:', err);
+      } catch (err: any) {
+        if (err.name === 'AbortError') {
+          console.warn('Fetch jobs timed out, using fallback.');
+        } else {
+          console.error('Failed to fetch jobs, using fallback:', err);
+        }
         setJobs(LIVE_JOB_ROSTER);
       } finally {
         clearTimeout(timeoutId);
@@ -105,7 +114,6 @@ export const JobSearchSection: React.FC<JobSearchSectionProps> = ({
 
     return dataRows
       .map((row, index) => {
-        // Safe access
         const getVal = (possibleKeys: string[]) => {
           const colIndex = headers.findIndex(h => possibleKeys.some(k => h.includes(k)));
           return colIndex !== -1 && row[colIndex] ? row[colIndex].replace(/^"|"$/g, '').trim() : '';
@@ -116,7 +124,6 @@ export const JobSearchSection: React.FC<JobSearchSectionProps> = ({
 
         const vertical = getVal(['category', 'industry', 'dept']) || 'General';
         
-        // Location mapping
         const city = getVal(['city']);
         const state = getVal(['state', 'st']);
         const zip = getVal(['zip', 'zipcode', 'postalcode']);
@@ -145,6 +152,7 @@ export const JobSearchSection: React.FC<JobSearchSectionProps> = ({
         
         const compensation = (minPay && maxPay) ? `${minPay} - ${maxPay} / yr` : (minPay || maxPay || 'Competitive');
         const description = getVal(['desc', 'summary', 'responsibilities']) || '';
+        const filter = getVal(['filter']);
 
         return {
           id: `JOB-${index + 1}`,
@@ -160,6 +168,7 @@ export const JobSearchSection: React.FC<JobSearchSectionProps> = ({
           schedule: schedule,
           workArrangement: workArrangement,
           department: vertical,
+          filter: filter,
           description: description,
           status: status,
           postedDaysAgo: 0,
@@ -169,8 +178,6 @@ export const JobSearchSection: React.FC<JobSearchSectionProps> = ({
       })
       .filter(Boolean);
   };
-
-  // ... (rest of the component)
 
   const handleSearch = () => {
     setActiveSearch({ query: searchQuery, location: locationQuery });
@@ -193,13 +200,16 @@ export const JobSearchSection: React.FC<JobSearchSectionProps> = ({
         job.department.toLowerCase().includes(q);
       const matchesLocation = job.location.toLowerCase().includes(l);
 
-      const matchesVertical = selectedVertical === 'ALL' || job.vertical.toLowerCase().trim() === selectedVertical.toLowerCase().trim();
+      const matchesFilter = (() => {
+        if (selectedFilter === 'All') return true;
+        return job.filter === selectedFilter;
+      })();
       
-      return matchesSearch && matchesLocation && matchesVertical;
-    });
-  }, [jobs, activeSearch, selectedVertical]);
+      const isActive = job.status.toUpperCase() !== 'CLOSED';
 
-  const uniqueModels = Array.from(new Set(jobs.map(j => j.model)));
+      return matchesSearch && matchesLocation && matchesFilter && isActive;
+    });
+  }, [jobs, activeSearch, selectedFilter]);
 
   if (loading) return (
     <div className="py-28 text-center flex flex-col items-center justify-center">
@@ -273,10 +283,27 @@ export const JobSearchSection: React.FC<JobSearchSectionProps> = ({
             </div>
           </div>
 
+          {/* Quick Filter Pills */}
+          <div className="flex flex-wrap items-center gap-2 pb-4 border-b border-[#131B2E]/10 mb-4 overflow-x-auto">
+            {uniqueFilters.map((filter) => (
+              <button
+                key={filter}
+                onClick={() => setSelectedFilter(filter)}
+                className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors border ${
+                  selectedFilter === filter
+                    ? 'bg-[#131B2E] text-white border-[#131B2E]'
+                    : 'bg-[#FCFCFA] text-[#3B4560] border-[#131B2E]/15 hover:border-[#131B2E]/30'
+                }`}
+              >
+                {filter}
+              </button>
+            ))}
+          </div>
+
           {/* Quick Vertical Badges */}
           <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
             <button
-              onClick={() => { setSearchQuery(''); setLocationQuery(''); setSelectedVertical('ALL'); }}
+              onClick={() => { setSearchQuery(''); setLocationQuery(''); setSelectedFilter('All'); }}
               className="px-3 py-1 rounded-full font-mono text-[11.5px] transition-colors cursor-pointer bg-[#8F6529]/10 text-[#8F6529] border border-[#8F6529]/20 hover:bg-[#8F6529]/20"
             >
               Clear All
@@ -290,14 +317,14 @@ export const JobSearchSection: React.FC<JobSearchSectionProps> = ({
             <p className="font-display text-lg font-bold text-[#131B2E] mb-1">No matching requisitions found</p>
             <p className="text-xs text-[#3B4560] mb-4">Try clearing filters or search terms.</p>
             <button
-              onClick={() => { setSearchQuery(''); setSelectedVertical('ALL'); setSelectedModel('ALL'); }}
+              onClick={() => { setSearchQuery(''); setSelectedFilter('All'); setSelectedModel('ALL'); }}
               className="text-xs font-mono text-[#8F6529] underline hover:text-[#131B2E]"
             >
               Reset all filters
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
             {filteredJobs.map((job) => {
               const verticalBadgeStyle = {
                 it: 'bg-[#2E6F6E]/15 text-[#2E6F6E] border-[#2E6F6E]/30',
@@ -305,11 +332,15 @@ export const JobSearchSection: React.FC<JobSearchSectionProps> = ({
                 edu: 'bg-[#B4813C]/20 text-[#8F6529] border-[#B4813C]/40'
               }[job.label];
 
+              const fullText = `${job.bonus || ''} ${job.description || ''} ${job.notes || ''}`;
+              const match = fullText.match(/(?:🎁\s*)?(\$[\d,]+(?:\s*-\s*\$[\d,]+)?\s*Sign-On Bonus|Sign-On Bonus:\s*\$[\d,]+)/i);
+              const bonusText = match ? match[0].trim() : null;
+
               return (
                 <div
                   key={job.id}
                   id={`job-card-${job.code}`}
-                  className="bg-[#FCFCFA] border border-[#131B2E]/12 hover:border-[#131B2E]/40 rounded-lg p-5 sm:p-6 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between group"
+                  className="bg-[#FCFCFA] border border-[#131B2E]/12 hover:border-[#131B2E]/40 rounded-lg px-4 py-3 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between group"
                 >
                   <div>
                     {/* Card Top Metadata */}
@@ -319,21 +350,10 @@ export const JobSearchSection: React.FC<JobSearchSectionProps> = ({
                           {job.code}
                         </span>
                       </div>
-                      <span className="text-[11px] font-mono text-[#3B4560] flex items-center gap-1">
-                      </span>
                     </div>
 
-                    {/* Bonus Badge */}
-                    {job.bonus && (
-                      <div className="mb-3">
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#FDF6E3] text-[#8F6529] rounded-full text-xs font-bold border border-[#FDE3A7]">
-                          <span>🎁</span> {job.bonus} SIGN-ON BONUS
-                        </span>
-                      </div>
-                    )}
-                    
                     {/* Status Badge */}
-                    <div className="mb-3">
+                    <div className="flex items-center gap-2 mb-3">
                       {job.status === 'Closed' && <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-[10px] font-bold">🔴 CLOSED</span>}
                       {job.status === 'Hold' && <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-[10px] font-bold">🟡 HOLD</span>}
                       {job.status === 'Open' && <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-[10px] font-bold">🟢 OPEN</span>}
@@ -346,34 +366,53 @@ export const JobSearchSection: React.FC<JobSearchSectionProps> = ({
                       {job.title}
                     </h3>
 
-                    {/* Key Attributes List */}
-                    <div className="space-y-2.5 text-sm text-[#3B4560] mb-4">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-[#8F6529]" />
-                        <span>{job.location}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <DollarSign className="w-4 h-4 text-[#2E6F6E]" />
-                        <span className="font-semibold text-[#131B2E]">{job.compensation}</span>
-                      </div>
-                      {(job.shift || job.schedule) && (
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-[#131B2E]" />
-                          <span>{job.shift ? `${job.shift} Shift` : ''}{job.shift && job.schedule ? ' • ' : ''}{job.schedule || ''}</span>
+                    {/* Row 1: Location & Salary */}
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0 space-y-1.5">
+                        <div className="flex items-center gap-2 flex-wrap text-xs text-slate-600 font-normal">
+                          <span className="shrink-0">📍</span>
+                          <span className="whitespace-nowrap flex-shrink-0">{job.location}</span>
                         </div>
-                      )}
-                      {job.workArrangement && (
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-4">🏢</div>
-                          <span>{job.workArrangement}</span>
+                        <div className="flex items-center gap-1.5 text-xs text-slate-600 font-normal">
+                          <span className="w-3.5 h-3.5 inline-flex items-center justify-center shrink-0">🏢</span>
+                          <span>{job.workArrangement || 'Onsite'}</span>
                         </div>
-                      )}
+                      </div>
+                      
+                      <div className="flex flex-col items-start gap-1">
+                        {(() => {
+                          const [amount, suffix] = job.compensation.includes('/ yr')
+                            ? job.compensation.split('/ yr')
+                            : [job.compensation, ''];
+                          return (
+                            <div className="inline-flex items-center gap-1 whitespace-nowrap">
+                              <span className="text-[#10b981] text-[0.9rem] font-semibold inline-flex items-center">$</span>
+                              <span className="text-[0.85rem] font-medium text-slate-800 leading-[1.2]">
+                                {amount}
+                              </span>
+                              {suffix && <span className="text-[0.8rem] font-normal text-slate-600">/ yr</span>}
+                            </div>
+                          );
+                        })()}
+                        
+                        {bonusText && (
+                          <div className="inline-flex items-center gap-1 whitespace-nowrap">
+                            <span className="text-[0.85rem] inline-flex items-center leading-[1] font-normal">🎁</span>
+                            <span className="text-[0.85rem] font-medium text-[#c2410c] leading-[1.2]">
+                              {bonusText.replace(/^🎁\s*/, '')}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Excerpt */}
-                    <p className="text-xs text-[#3B4560] line-clamp-2 leading-relaxed mb-4">
-                      {job.description}
-                    </p>
+                    {/* Row 2: Shift / Schedule */}
+                    {(job.shift || job.schedule) && (
+                      <div className="w-full mt-2 pt-1 flex items-center gap-2 text-xs text-slate-600 whitespace-normal leading-normal">
+                        <span className="w-3.5 h-3.5 inline-flex items-center justify-center shrink-0">⏰</span>
+                        <span>{job.shift ? `${job.shift} Shift` : ''}{job.shift && job.schedule ? ' • ' : ''}{job.schedule || ''}</span>
+                      </div>
+                    )}
 
                     {/* Accordion Content */}
                     <AnimatePresence>
@@ -387,7 +426,7 @@ export const JobSearchSection: React.FC<JobSearchSectionProps> = ({
                           <div className="space-y-4 py-4 border-t border-[#131B2E]/10 text-xs text-[#3B4560]">
                             <div>
                               <h4 className="font-mono text-[10px] uppercase tracking-wider text-[#8F6529] font-bold mb-1.5">Position Overview</h4>
-                              <p className="leading-relaxed">{job.description}</p>
+                              <p className="leading-relaxed whitespace-pre-line">{job.description}</p>
                               {job.bonus && (
                                 <p className="mt-2 font-semibold text-emerald-600">• Sign-on Bonus: {job.bonus}</p>
                               )}

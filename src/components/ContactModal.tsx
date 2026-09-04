@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Mail, Phone, MessageSquare, Building2, CheckCircle2 } from 'lucide-react';
+import { formatPhoneNumberRaw, validatePhoneNumber, formatName, validateName } from '../utils/formValidation';
 
 interface ContactModalProps {
   isOpen: boolean;
@@ -14,8 +15,33 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
     reason: '',
     message: ''
   });
+  const [errors, setErrors] = useState<{ phone?: string, name?: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatName(e.target.value);
+    setFormData({ ...formData, name: formatted });
+    if (errors.name) {
+      setErrors({ ...errors, name: undefined });
+    }
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatPhoneNumberRaw(e.target.value);
+    setFormData({ ...formData, phone: formatted });
+    if (errors.phone) {
+      setErrors({ ...errors, phone: undefined });
+    }
+  };
+
+  const validatePhoneBlur = () => {
+    if (!validatePhoneNumber(formData.phone)) {
+      setErrors({ ...errors, phone: "Please enter a valid, active 10-digit phone number." });
+    } else {
+      setErrors({ ...errors, phone: undefined });
+    }
+  };
 
   useEffect(() => {
     if (submitted) {
@@ -32,6 +58,19 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const newErrors: { phone?: string, name?: string } = {};
+    if (!validateName(formData.name)) {
+      newErrors.name = "Please enter a valid name (letters only)";
+    }
+    if (!validatePhoneNumber(formData.phone)) {
+      newErrors.phone = "Please enter a valid, active 10-digit phone number.";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+    
     setIsSubmitting(true);
     
     const payload = {
@@ -98,7 +137,8 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">FULL NAME *</label>
-                <input required type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full px-3.5 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm" placeholder="Enter your full name" />
+                <input required type="text" value={formData.name} onChange={handleNameChange} className={`w-full px-3.5 py-3 bg-gray-50 border rounded-xl text-sm ${errors.name ? 'border-red-500' : 'border-gray-200'}`} placeholder="Enter your full name" />
+                  {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -108,7 +148,8 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1.5">PHONE NUMBER *</label>
-                  <input required type="tel" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="w-full px-3.5 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm" placeholder="(555) 000-0000" />
+                  <input required type="text" maxLength={10} value={formData.phone} onChange={handlePhoneChange} onBlur={validatePhoneBlur} className={`w-full px-3.5 py-3 bg-gray-50 border rounded-xl text-sm ${errors.phone ? 'border-red-500' : 'border-gray-200'}`} placeholder="Enter 10-digit phone number" />
+                  {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
                 </div>
               </div>
 
@@ -127,7 +168,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
                 <span>Data protected under HIPAA standards.</span>
               </div>
 
-              <button type="submit" disabled={isSubmitting} className="w-full bg-[#131B2E] text-white py-3 rounded-xl font-semibold text-sm hover:bg-gray-800 transition-colors flex items-center justify-center gap-2">
+              <button type="submit" disabled={isSubmitting || !validatePhoneNumber(formData.phone)} className="w-full bg-[#131B2E] text-white py-3 rounded-xl font-semibold text-sm hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                 {isSubmitting ? 'Sending...' : (
                   <>
                     <Mail className="w-4 h-4" />

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { AboutSection } from './components/AboutSection';
@@ -20,7 +20,44 @@ import { JobDetailModal } from './components/JobDetailModal';
 import { JobRole } from './types';
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<'home' | 'jobs' | 'contact'>('home');
+  // Initialize from hash (ignore localStorage on fresh visit)
+  const getInitialView = () => {
+    const hash = window.location.hash.replace('#', '');
+    
+    // Explicitly check for valid hashes
+    if (hash === 'jobs' || hash === 'contact') return hash;
+    
+    // Default to home if no hash or empty hash
+    return 'home';
+  };
+
+  const [currentView, setCurrentView] = useState<'home' | 'jobs' | 'contact'>(getInitialView() as 'home' | 'jobs' | 'contact');
+
+  useEffect(() => {
+    const hash = window.location.hash.replace('#', '');
+    
+    // Only restore/set if explicit hash is present
+    if (hash === 'jobs' || hash === 'contact') {
+      setCurrentView(hash as 'jobs' | 'contact');
+    } else if (hash === 'home') {
+      setCurrentView('home');
+    } else {
+      // Default to home on new session/no hash
+      setCurrentView('home');
+      window.location.hash = '#home';
+    }
+
+    const handleHashChange = () => {
+      const newHash = window.location.hash.replace('#', '');
+      if (newHash === 'jobs' || newHash === 'contact' || newHash === 'home') {
+        setCurrentView(newHash as 'home' | 'jobs' | 'contact');
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
 
@@ -54,6 +91,7 @@ export default function App() {
           setPreselectedJobForApply(null);
         } else if (currentView === 'jobs') {
           setCurrentView('home');
+          window.location.hash = '#home';
         }
       }
     }
@@ -66,6 +104,7 @@ export default function App() {
       setIsTermsModalOpen(true);
     } else {
       setCurrentView(view as 'home' | 'jobs' | 'contact');
+      window.location.hash = `#${view}`;
     }
   };
 
